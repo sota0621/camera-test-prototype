@@ -11,7 +11,7 @@ let isProcessing = false;
 let lockCounter = 0;
 const REQUIRED_FRAMES = 150; // 5秒間安定
 
-// ブレ対策：直近30フレームの履歴を記憶するバッファ（打率制の導入）
+// ブレ対策：直近30フレームの履歴を記憶するバッファ（打率制）
 const BUFFER_SIZE = 30;
 let detectionHistory = new Array(BUFFER_SIZE).fill(false);
 let historyIndex = 0;
@@ -135,7 +135,7 @@ startBtn.addEventListener('click', async () => {
             contours = new cv.MatVector(); hierarchy = new cv.Mat();
 
             isProcessing = true;
-            statusText.innerText = "黄緑の丸4つを画面内に収めてください";
+            statusText.innerText = "緑の丸4つを画面内に収めてください";
             animationFrameId = requestAnimationFrame(processVideo);
         };
     } catch (error) {
@@ -154,14 +154,12 @@ function startRecordingSystem() {
 
     mediaRecorder = new MediaRecorder(cameraStream, options);
 
-    // データが渡されたらメモリ(配列)ではなくIndexedDB(ストレージ)へ直接保存
     mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
             saveChunkToDB(event.data);
         }
     };
 
-    // 録画停止時、ストレージからデータをロードして結合・保存を実行
     mediaRecorder.onstop = async () => {
         try {
             statusText.innerText = "ストレージから動画データを収集中...";
@@ -175,7 +173,6 @@ function startRecordingSystem() {
         }
     };
 
-    // 1秒(1000ms)おきに細かくデータを区切って、リアルタイムにストレージへ書き出させる
     mediaRecorder.start(1000);
     isRecording = true;
     stopRecordBtn.style.display = 'block';
@@ -203,7 +200,7 @@ function triggerSecureDownload(blobData) {
     
     setTimeout(() => {
         URL.revokeObjectURL(url);
-        clearDatabase(); // ダウンロード完了後にストレージをクリーンアップ
+        clearDatabase();
     }, 1000);
 
     statusText.innerHTML = `<span style="color: #34c759; font-size: 18px;">■ 録画を安全に終了しました。<br>「ファイル」アプリの「ダウンロード」を確認してください。</span>`;
@@ -242,9 +239,11 @@ function processVideo() {
         cv.cvtColor(dst, hsv, cv.COLOR_RGBA2RGB);
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
-        // 色相を蛍光黄緑に絞り込み、さらに彩度(S)・明度(V)の下限を上げてキッチン内の「くすんだ緑」を徹底排除
-        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 60, 50]);
-        let high = cv.matFromArray(3, 1, cv.CV_8U, [85, 255, 255]);
+        // ★普通の緑・くすんだ緑を確実に拾うように調整
+        // 色相(H)の範囲を[35〜90]に広げ、少し青みがかった深緑までカバー
+        // 暗めのシールに対応するため、彩度(S)の下限を[50]、明度(V)の下限を[40]まで落としています
+        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 50, 40]);
+        let high = cv.matFromArray(3, 1, cv.CV_8U, [90, 255, 255]);
         cv.inRange(hsv, low, high, mask);
         low.delete(); high.delete();
 
@@ -255,12 +254,12 @@ function processVideo() {
             let cnt = contours.get(i);
             let area = cv.contourArea(cnt);
             
-            // 面積の下限を少し上げ、さらに上限(800)を設けてボトルの本体や大きな障害物を一発カット
-            if (area > 30 && area < 800) {
+            // シールサイズに合わせた面積制限（小さすぎるゴミと大きすぎる背景をカット）
+            if (area > 20 && area < 800) {
                 let perimeter = cv.arcLength(cnt, true);
                 if (perimeter > 0) {
                     let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
-                    if (circularity > 0.8) { 
+                    if (circularity > 0.75) { // 影による多少の形の歪みを考慮し、円形度を0.8→0.75に微緩和
                         let M = cv.moments(cnt);
                         if (M.m00 !== 0) validCenters.push({ x: M.m10 / M.m00, y: M.m01 / M.m00 });
                     }
@@ -269,16 +268,15 @@ function processVideo() {
             cnt.delete();
         }
 
-        // このフレームで「きっちり4点」見つかったかを履歴に記録
+        // 打率計算用の履歴を更新
         const isCurrentFrameValid = (validCenters.length === 4);
         detectionHistory[historyIndex] = isCurrentFrameValid;
         historyIndex = (historyIndex + 1) % BUFFER_SIZE;
 
-        // 直近30フレーム中、何フレーム成功しているかを計算（打率の算出）
         const validFrameCount = detectionHistory.filter(Boolean).length;
 
-        // 打率が8割以上（30フレーム中25フレーム成功）なら、ロックカウントを進める（1フレームのブレを許容）
-        if (validFrameCount >= 25 && validCenters.length === 4) {
+        // 30フレーム中22フレーム以上（約7割強）成功していれば安定とみなす（普通の緑のチラつき対策）
+        if (validFrameCount >= 22 && validCenters.length === 4) {
             lockCounter++;
             validCenters.sort((a, b) => a.y - b.y);
             let topTwo = [validCenters[0], validCenters[1]].sort((a, b) => a.x - b.x);
