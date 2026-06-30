@@ -242,8 +242,8 @@ function processVideo() {
         // ★普通の緑・くすんだ緑を確実に拾うように調整
         // 色相(H)の範囲を[35〜90]に広げ、少し青みがかった深緑までカバー
         // 暗めのシールに対応するため、彩度(S)の下限を[50]、明度(V)の下限を[40]まで落としています
-        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 50, 40]);
-        let high = cv.matFromArray(3, 1, cv.CV_8U, [90, 255, 255]);
+        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 60, 40]);
+        let high = cv.matFromArray(3, 1, cv.CV_8U, [85, 255, 255]);
         cv.inRange(hsv, low, high, mask);
         low.delete(); high.delete();
 
@@ -255,11 +255,11 @@ function processVideo() {
             let area = cv.contourArea(cnt);
             
             // シールサイズに合わせた面積制限（小さすぎるゴミと大きすぎる背景をカット）
-            if (area > 20 && area < 800) {
+            if (area > 22 && area < 800) {
                 let perimeter = cv.arcLength(cnt, true);
                 if (perimeter > 0) {
                     let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
-                    if (circularity > 0.75) { // 影による多少の形の歪みを考慮し、円形度を0.8→0.75に微緩和
+                    if (circularity > 0.8) { // 影による多少の形の歪みを考慮し、円形度を0.8→0.75に微緩和
                         let M = cv.moments(cnt);
                         if (M.m00 !== 0) validCenters.push({ x: M.m10 / M.m00, y: M.m01 / M.m00 });
                     }
