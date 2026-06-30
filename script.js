@@ -243,8 +243,8 @@ function processVideo() {
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
         // 色相を蛍光黄緑に絞り込み、さらに彩度(S)・明度(V)の下限を上げてキッチン内の「くすんだ緑」を徹底排除
-        let low = cv.matFromArray(3, 1, cv.CV_8U, [40, 110, 120]);
-        let high = cv.matFromArray(3, 1, cv.CV_8U, [80, 255, 255]);
+        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 60, 50]);
+        let high = cv.matFromArray(3, 1, cv.CV_8U, [85, 255, 255]);
         cv.inRange(hsv, low, high, mask);
         low.delete(); high.delete();
 
