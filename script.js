@@ -239,44 +239,50 @@ function processVideo() {
         cv.cvtColor(dst, hsv, cv.COLOR_RGBA2RGB);
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
-        // ★普通の緑・くすんだ緑を確実に拾うように調整
-        // 色相(H)の範囲を[35〜90]に広げ、少し青みがかった深緑までカバー
-        // 暗めのシールに対応するため、彩度(S)の下限を[50]、明度(V)の下限を[40]まで落としています
-        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 60, 40]);
+        // 元の「動きやすかった」閾値に完全に戻す
+        let low = cv.matFromArray(3, 1, cv.CV_8U, [35, 60, 50]);
         let high = cv.matFromArray(3, 1, cv.CV_8U, [85, 255, 255]);
         cv.inRange(hsv, low, high, mask);
         low.delete(); high.delete();
 
         cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-        let validCenters = [];
+        
+        let allCandidates = [];
 
+        // ステップ1: まずは緑色っぽくて、ある程度丸いものをすべてリストアップする
         for (let i = 0; i < contours.size(); ++i) {
             let cnt = contours.get(i);
             let area = cv.contourArea(cnt);
             
-            // シールサイズに合わせた面積制限（小さすぎるゴミと大きすぎる背景をカット）
-            if (area > 450 && area < 900) {
+            if (area > 22) { // 最低限のノイズカット（下限のみ）
                 let perimeter = cv.arcLength(cnt, true);
                 if (perimeter > 0) {
                     let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
-                    if (circularity > 0.8) { // 影による多少の形の歪みを考慮し、円形度を0.8→0.75に微緩和
+                    
+                    // しっかり丸い形をしているものだけを候補にする（大きな四角い物体などをここで弾く）
+                    if (circularity > 0.8) { 
                         let M = cv.moments(cnt);
-                        if (M.m00 !== 0) validCenters.push({ x: M.m10 / M.m00, y: M.m01 / M.m00 });
+                        if (M.m00 !== 0) {
+                            allCandidates.push({
+                                area: area, // 面積を記憶
+                                x: M.m10 / M.m00,
+                                y: M.m01 / M.m00
+                            });
+                        }
                     }
                 }
             }
             cnt.delete();
         }
 
-        // 打率計算用の履歴を更新
-        const isCurrentFrameValid = (validCenters.length === 4);
-        detectionHistory[historyIndex] = isCurrentFrameValid;
-        historyIndex = (historyIndex + 1) % BUFFER_SIZE;
+        // ★新ロジック: 候補を「面積が大きい順（降順）」に並び替える
+        allCandidates.sort((a, b) => b.area - a.area);
 
-        const validFrameCount = detectionHistory.filter(Boolean).length;
+        // 上位4つだけを「本物のマーカー」として抽出する
+        let validCenters = allCandidates.slice(0, 4);
 
-        // 30フレーム中22フレーム以上（約7割強）成功していれば安定とみなす（普通の緑のチラつき対策）
-        if (validFrameCount >= 22 && validCenters.length === 4) {
+        // 最終的に「合格した大きな丸」が4つ揃っていれば確定
+        if (validCenters.length === 4) {
             lockCounter++;
             validCenters.sort((a, b) => a.y - b.y);
             let topTwo = [validCenters[0], validCenters[1]].sort((a, b) => a.x - b.x);
@@ -295,18 +301,18 @@ function processVideo() {
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
                 canvas.classList.add('locked');
-                statusText.innerHTML = `<span style="color: #ff3b30;">🔴 長時間実験映像を録画中...（終了時に停止ボタンを押すと、1本の動画として安全に保存されます。そのまま放置してください）</span>`;
+                statusText.innerHTML = `<span style="color: #ff3b30;">🔴 長時間実験映像を録画中...</span>`;
 
                 startRecordingSystem();
                 return; 
             } else {
                 let timeLeft = Math.ceil((REQUIRED_FRAMES - lockCounter) / 30);
-                statusText.innerHTML = `🟡 4点捕捉中... 画角安定まであと <span style="color: #ffcc00; font-size: 20px;">${timeLeft}</span> 秒 (安定度: ${Math.round(validFrameCount/BUFFER_SIZE*100)}%)`;
+                statusText.innerHTML = `🟡 4点捕捉中... 画角安定まであと <span style="color: #ffcc00; font-size: 20px;">${timeLeft}</span> 秒`;
             }
         } else {
             lockCounter = 0;
             canvas.classList.remove('locked');
-            statusText.innerHTML = `🔍 マーカーを探しています... (${validCenters.length} / 4) <small style="font-size:11px; opacity:0.7;">捕捉率:${Math.round(validFrameCount/BUFFER_SIZE*100)}%</small>`;
+            statusText.innerHTML = `🔍 マーカーを探しています... (${validCenters.length} / 4)`;
             ctx.fillStyle = 'red';
             for(let p of validCenters) {
                 ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI); ctx.fill();
