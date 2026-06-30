@@ -255,7 +255,7 @@ function processVideo() {
             let area = cv.contourArea(cnt);
             
             // シールサイズに合わせた面積制限（小さすぎるゴミと大きすぎる背景をカット）
-            if (area > 40 && area < 800) {
+            if (area > 450 && area < 900) {
                 let perimeter = cv.arcLength(cnt, true);
                 if (perimeter > 0) {
                     let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
