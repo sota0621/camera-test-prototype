@@ -254,7 +254,7 @@ function processVideo() {
             let cnt = contours.get(i);
             let area = cv.contourArea(cnt);
             
-            if (area < 800) { // 最低限のノイズカット（下限のみ）
+            if (area < 500) { // 最低限のノイズカット（下限のみ）
                 let perimeter = cv.arcLength(cnt, true);
                 if (perimeter > 0) {
                     let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
