@@ -1,165 +1,155 @@
 /* ==========================================
-   ベーススタイル & リセット
+   スマートフォン全画面・スクロール禁止リセット
    ========================================== */
-body {
+html, body {
     margin: 0;
-    padding: 20px;
-    background-color: #0f1115;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* 絶対にスクロールさせない */
+    background-color: #0d0f12;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #e2e8f0;
+}
+
+/* アプリ全体のコンテナ（画面縦いっぱいにフィット） */
+.app-container {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
+    padding: 12px;
 }
 
 /* ==========================================
-   メインカード（コンテナ）
+   上部：ヘッダー（ステータス）
    ========================================== */
-.app-card {
-    background-color: #1a1f26;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    padding: 24px;
-    width: 100%;
-    max-width: 760px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* ヘッダー・ステータス */
 .app-header {
+    flex: 0 0 auto; /* 高さを固定 */
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid #2d3748;
-    padding-bottom: 16px;
-}
-
-.app-header h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: #f7fafc;
+    justify-content: center;
+    padding-bottom: 8px;
 }
 
 /* ステータスバッジ */
 .status-badge {
-    padding: 8px 16px;
-    border-radius: 30px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 20px;
     font-size: 14px;
     font-weight: bold;
     text-align: center;
-    background-color: #2d3748;
+    background-color: #1a1f26;
+    border: 1px solid #2d3748;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
     transition: all 0.3s ease;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-    width: 90%;
-    max-width: 400px;
+}
+
+/* 💡 JavaScriptが `canvas.classList.add('locked')` をした瞬間に連動するCSS */
+/* 録画中状態のステータス表示を真っ赤＆明滅させて「撮影中」を強調 */
+.video-area:has(canvas.locked) ~ .app-header #status {
+    background-color: #e53e3e !important;
+    border-color: #fc8181 !important;
+    color: #ffffff !important;
+    animation: pulse-recording 1.5s infinite;
+}
+
+@keyframes pulse-recording {
+    0% { opacity: 1; box-shadow: 0 0 0px rgba(229, 62, 62, 0.4); }
+    50% { opacity: 0.8; box-shadow: 0 0 15px rgba(229, 62, 62, 0.8); }
+    100% { opacity: 1; box-shadow: 0 0 0px rgba(229, 62, 62, 0.4); }
 }
 
 /* ==========================================
-   カメラ / キャンバスエリア
+   中央：映像表示エリア（ここが最大化します）
    ========================================== */
-.container {
+.video-area {
+    flex: 1 1 auto; /* 残りの画面高さをすべてこのエリアに割り当てる */
     position: relative;
     width: 100%;
-    overflow: hidden;
-    border-radius: 12px;
     background-color: #000;
-}
-
-video {
-    display: none;
-}
-
-canvas {
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    border: 2px solid #2d3748;
     border-radius: 12px;
-    transition: all 0.4s ease;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid #1a1f26;
 }
 
-/* 録画ロックオン時の強調エフェクト */
+/* 探索・検知中のキャンバス */
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* アスペクト比を維持して最大化 */
+    z-index: 2;
+}
+
+/* 元のビデオ要素（初期状態は非表示） */
+video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+    display: block; /* 常に裏で描画させておく */
+}
+
+/* 💡 【重要】録画が開始（lockedクラスが追加）されたら、
+   動かなくなったCanvasを完全に消して、裏の「生カメラ映像（video）」を表に出す */
 canvas.locked {
-    border-color: #e53e3e;
-    box-shadow: 0 0 20px rgba(229, 62, 62, 0.4);
+    display: none !important;
 }
 
 /* ==========================================
-   コントロールボタン
+   下部：操作フッター（ボタン）
    ========================================== */
-.btn-container {
+.app-footer {
+    flex: 0 0 auto; /* 高さを固定 */
     display: flex;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
 }
 
 .btn {
     flex: 1;
-    padding: 14px 24px;
-    font-size: 16px;
-    font-weight: 600;
+    padding: 16px; /* スマホでタップしやすいサイズ */
+    font-size: 15px;
+    font-weight: bold;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    outline: none;
 }
 
-/* メイン開始ボタン */
+/* システム開始ボタン */
 .btn-primary {
     background: linear-gradient(135deg, #3182ce, #2b6cb0);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
 }
-
-.btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4299e1, #3182ce);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(49, 130, 206, 0.4);
-}
-
-.btn-primary:active:not(:disabled) {
-    transform: translateY(1px);
-}
-
 .btn-primary:disabled {
-    background: #2d3748;
-    color: #718096;
-    cursor: not-allowed;
-    box-shadow: none;
+    background: #1a1f26;
+    color: #4a5568;
+    border: 1px solid #2d3748;
 }
 
-/* 停止ボタン（初期状態は誤操作防止のため目立たせない） */
+/* 録画停止ボタン */
 .btn-danger {
-    background-color: #2d3748;
+    background-color: #1a1f26;
     color: #a0aec0;
-    border: 1px solid #4a5568;
+    border: 1px solid #2d3748;
 }
 
-.btn-danger:hover {
+/* 録画が始まったら停止ボタンを目立たせる（誤操作防止解除） */
+.video-area:has(canvas.locked) ~ .app-footer .btn-danger {
     background-color: #e53e3e;
     color: #fff;
     border-color: #e53e3e;
-    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-}
-
-/* 画面幅が狭いときのレスポンシブ対応 */
-@media (max-width: 480px) {
-    .btn-container {
-        flex-direction: column;
-    }
-    .btn {
-        width: 100%;
-    }
+    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.2);
 }
