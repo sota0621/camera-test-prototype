@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黄緑色マーカー検出（長時間録画・IndexedDB堅牢版）</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>黄緑色マーカー検出システム</title>
+    <link rel="stylesheet" href="style.css"/>
     <script async src="opencv.min.js" id="opencv-src"></script>
 </head>
 <body>
 
-    <div id="status">OpenCV.jsを読み込んでいます...</div>
-    
-    <div class="container">
-        <video id="camera-view" autoplay playsinline muted></video>
-        <canvas id="canvas-output"></canvas>
-    </div>
+    <div class="app-card">
+        <header class="app-header">
+            <h1>実験録画モニタ</h1>
+            <div id="status" class="status-badge loading">OpenCV.jsを読み込んでいます...</div>
+        </header>
+        
+        <div class="container">
+            <video id="camera-view" autoplay playsinline muted></video>
+            <canvas id="canvas-output"></canvas>
+        </div>
 
-    <div class="btn-container">
-        <button id="start-btn" class="btn" disabled>システム開始</button>
-        <button id="stop-record-btn" class="btn">⏹ 録画を停止して終了</button>
+        <div class="btn-container">
+            <button id="start-btn" class="btn btn-primary" disabled>システム開始</button>
+            <button id="stop-record-btn" class="btn btn-danger">⏹ 録画を停止して終了</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
