@@ -2,28 +2,27 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <title>黄緑色マーカー検出システム</title>
     <link rel="stylesheet" href="style.css"/>
     <script async src="opencv.min.js" id="opencv-src"></script>
 </head>
 <body>
 
-    <div class="app-card">
+    <div class="app-container">
         <header class="app-header">
-            <h1>実験録画モニタ</h1>
             <div id="status" class="status-badge loading">OpenCV.jsを読み込んでいます...</div>
         </header>
         
-        <div class="container">
+        <div class="video-area">
             <video id="camera-view" autoplay playsinline muted></video>
             <canvas id="canvas-output"></canvas>
         </div>
 
-        <div class="btn-container">
+        <footer class="app-footer">
             <button id="start-btn" class="btn btn-primary" disabled>システム開始</button>
-            <button id="stop-record-btn" class="btn btn-danger">⏹ 録画を停止して終了</button>
-        </div>
+            <button id="stop-record-btn" class="btn btn-danger">⏹ 録画停止して終了</button>
+        </footer>
     </div>
 
     <script src="script.js"></script>
